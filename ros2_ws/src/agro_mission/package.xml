@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="http://download.ros.org/schema/package_format3.xsd"?>
+<package format="3">
+  <name>agro_mission</name>
+  <version>0.0.1</version>
+  <description>Nodi ROS2 per la pipeline allerta-missione-log della tesi AgroRisk</description>
+  <maintainer email="232223180+nuccelliviola@users.noreply.github.com">Viola Nuccelli</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

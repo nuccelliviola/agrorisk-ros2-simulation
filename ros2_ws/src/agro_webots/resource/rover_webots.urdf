@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<robot name="Rover Webots">
+    <webots>
+        <plugin type="agro_webots.rover_controller_webots.RoverControllerWebots" />
+    </webots>
+</robot>

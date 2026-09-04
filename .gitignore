@@ -1,0 +1,48 @@
+# --- Cartelle generate da colcon (si rigenerano con colcon build) ---
+build/
+install/
+log/
+
+# --- File di backup manuali ---
+*.bak
+*.bak_*
+*_pre_*
+
+# --- Appunti personali (non fanno parte del progetto) ---
+AVVIARE SIMULAZIONE.txt
+
+# --- Rumore di Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- File temporanei di sistema ---
+.DS_Store
+*~
+
+# --- Immagini NDVI (tenute in locale per la tesi, non nel repo) ---
+ros2_ws/src/agro_webots/textures/
+
+# --- File di configurazione vista Webots (rigenerati da Webots) ---
+*.wbproj
+
+# --- Altri backup ---
+*.backup
+tesi_latex/
+CLAUDE.md
+.claude/
+
+# --- Metadati WSL/Windows ---
+*:Zone.Identifier
+Thumbs.db
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Cache / ambienti Python ---
+.pytest_cache/
+.venv/
+venv/

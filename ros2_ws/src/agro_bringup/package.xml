@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="http://download.ros.org/schema/package_format3.xsd"?>
+<package format="3">
+  <name>agro_bringup</name>
+  <version>0.0.1</version>
+  <description>
+    Bringup unificato della demo drone-rover AgroRisk: avvia Webots
+    (drone + rover) e la pipeline di missione di agro_mission
+    (mission_logger, mission_manager, agro_alert_publisher) in un unico
+    launch file, rispettando l'ordine di avvio necessario a non perdere
+    eventi. Non sostituisce i launch/nodi esistenti, si limita a
+    orchestrarli.
+  </description>
+  <maintainer email="232223180+nuccelliviola@users.noreply.github.com">Viola Nuccelli</maintainer>
+  <license>Apache-2.0</license>
+
+  <exec_depend>agro_webots</exec_depend>
+  <exec_depend>agro_mission</exec_depend>
+  <exec_depend>ros2launch</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<robot name="Drone Webots">
+    <webots>
+        <plugin type="agro_webots.drone_controller_webots.DroneControllerWebots" />
+    </webots>
+</robot>

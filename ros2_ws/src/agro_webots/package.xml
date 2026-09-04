@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="http://download.ros.org/schema/package_format3.xsd"?>
+<package format="3">
+  <name>agro_webots</name>
+  <version>0.0.1</version>
+  <description>Mondo Webots e bridge ROS2 per la missione drone AgroRisk</description>
+  <maintainer email="232223180+nuccelliviola@users.noreply.github.com">Viola Nuccelli</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>webots_ros2_driver</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <exec_depend>agro_mission</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
