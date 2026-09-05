@@ -1,6 +1,6 @@
 """
-Riceve le allerte da /agro/alert, decide se avviare una missione
-(una sola missione attiva alla volta), assegna un drone e pubblica:
+Riceve le allerte da /agro/alert, decide se avviare una missione, assegna
+un drone e pubblica:
 - il comando di missione su /agro/mission_cmd (per il drone_controller)
 - gli eventi di missione su /agro/events (per il mission_logger)
 
@@ -16,8 +16,6 @@ return_to_base conti dipende dal ramo:
 Alla chiusura, il mission_manager torna disponibile per la prossima
 allerta e pubblica la riga riepilogativa "mission" (durata totale, da
 alert_received al return_to_base che ha concluso la missione).
-
-
 """
 import json
 import time
@@ -72,15 +70,9 @@ class MissionManager(Node):
         self._mission_start_epoch = None
         self._mission_start_iso = None
 
-        # Coda FIFO delle allerte "high" arrivate a drone occupato:
-        # [{"alert": ..., "enqueued_epoch": ...}, ...].
-        # Si svuota di un elemento a ogni chiusura di missione. Nel ramo
-        # "rischio non confermato" la chiusura e' il return_to_base del
-        # drone, garantito anche in caso di guasto dal PHASE_TIMEOUT_S in
-        # drone_controller_webots.py. Nel ramo "rischio confermato" serve
-        # invece il return_to_base del rover, che non ha un timeout di
-        # fase: se il rover si bloccasse, la coda non drenerebbe (limite
-        # noto del prototipo).
+        # Coda FIFO delle allerte "high" ricevute mentre una missione è attiva.
+        # L'allerta successiva viene estratta soltanto al completamento della
+        # missione corrente.
         self._alert_queue = []
 
     def on_alert(self, msg: String):
@@ -89,8 +81,9 @@ class MissionManager(Node):
         zone_id = alert.get("zone_id")
 
         if risk_level != "high":
-            # Sotto soglia: non aziona una missione ne' va in coda, ma
-            # resta comunque tracciata nel dataset 
+            # Le allerte con livello di rischio diverso da "high" non avviano
+            # una missione e non vengono accodate, ma restano registrate nel
+            # dataset.
             self._log_event(
                 event_type="alert_received", alert=alert, mission_id=None,
                 x=0.0, y=0.0, z=0.0,

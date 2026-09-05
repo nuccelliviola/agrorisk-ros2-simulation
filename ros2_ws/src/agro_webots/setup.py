@@ -21,8 +21,8 @@ setup(
     zip_safe=True,
     maintainer='Viola Nuccelli',
     maintainer_email='232223180+nuccelliviola@users.noreply.github.com',
-    description='Mondo Webots e bridge ROS2 per la missione drone AgroRisk',
-    license='Apache-2.0',
+    description='Mondo Webots e controller ROS2 per la simulazione cooperativa drone-rover AgroRisk',
+    license='Proprietary',
     tests_require=['pytest'],
     entry_points={'console_scripts': []},
 )

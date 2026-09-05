@@ -1,10 +1,9 @@
 """
-Nodo che pubblica una sequenza finita e deterministica di allerte
-AgroRisk per la demo, poi si ferma da solo. Ogni allerta della sequenza viene pubblicata una sola volta,
-nell'ordine e con i ritardi definiti in ALERT_SEQUENCE; dopo l'ultima
-non c'è nessuna ripetizione.
-
-
+Nodo ROS2 che pubblica una sequenza finita e deterministica di allerte
+AgroRisk. Ogni allerta viene pubblicata una sola volta, nell'ordine e
+con i ritardi definiti in ALERT_SEQUENCE. Al termine della sequenza il
+nodo pubblica il completamento su /agro/alerts_done e non programma
+ulteriori allerte.
 """
 import json
 
@@ -13,17 +12,12 @@ from rclpy.node import Node
 from std_msgs.msg import String, Bool
 
 
-# Unica piaga gestita in questa demo 
+# Unico parassita gestito in questa demo.
 PEST = "tuta_absoluta"
 
-# Sequenza fissa della demo: ogni voce e' 
-# -ritardo dall'evento precedente in secondi
-# -zone_id, 
-# -risk_level
-# Il ritardo della prima voce e' dall'avvio del nodo: 15s per dare tempo a Webots di
-# caricare il mondo e a tutti i nodi di completare la discovery prima
-# che parta la prima allerta, cosi' il drone_controller e' gia' in
-# ascolto e non si perde la missione iniziale.
+# Sequenza deterministica delle allerte:
+# (ritardo dall'evento precedente in secondi, zone_id, risk_level).
+# Per la prima voce il ritardo è calcolato dall'avvio del nodo.
 ALERT_SEQUENCE = [
     (15.0, "ZONA_B", "high"),
     (15.0, "ZONA_C", "high"),

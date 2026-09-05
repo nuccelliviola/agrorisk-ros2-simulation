@@ -1,9 +1,9 @@
 """
-Sottoscrive /agro/events e salva ogni evento come riga di un file CSV,
-creando l'header al primo avvio. Path del file configurabile via
-parametro `log_path` (default: ~/agrorisk_dataset/log_<timestamp>.csv,
-un file diverso per ogni avvio del nodo).
+Nodo ROS2 che registra gli eventi pubblicati su /agro/events in un file CSV.
 
+Il percorso è configurabile tramite il parametro `log_path`. Se non viene
+specificato, viene creato un nuovo file in ~/agrorisk_dataset con timestamp
+nel nome. L'intestazione viene scritta quando il file è nuovo o vuoto.
 """
 import json
 import csv

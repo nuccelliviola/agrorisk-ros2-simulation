@@ -1,13 +1,6 @@
 """
-Lancia Webots con il mondo agro_field.wbt e collega il driver ROS2
-al robot DEF DRONE_1 (controller "<extern>" nel file .wbt).
-
-Il collegamento a DroneControllerWebots avviene tramite l'URDF
-resource/drone_webots.urdf, che dichiara <plugin type=
-"agro_webots.drone_controller_webots.DroneControllerWebots" />.
-Pattern verificato confrontandolo con webots_ros2_mavic (drone
-ufficiale) installato in /opt/ros/jazzy/share/webots_ros2_mavic.
-
+Launch file per l'avvio del mondo Webots e dei controller ROS2
+associati al drone e al rover tramite webots_ros2_driver.
 """
 import os
 from launch import LaunchDescription

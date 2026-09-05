@@ -5,7 +5,7 @@
   <version>0.0.1</version>
   <description>Nodi ROS2 per la pipeline allerta-missione-log della tesi AgroRisk</description>
   <maintainer email="232223180+nuccelliviola@users.noreply.github.com">Viola Nuccelli</maintainer>
-  <license>Apache-2.0</license>
+  <license>Proprietary</license>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>

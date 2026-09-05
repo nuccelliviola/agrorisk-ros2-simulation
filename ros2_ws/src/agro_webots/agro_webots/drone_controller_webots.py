@@ -1,12 +1,10 @@
 """
-Controller Webots del drone, integrato con ROS2 tramite webots_ros2_driver
-secondo il pattern "extern controller + driver plugin".
+Controller Webots del drone integrato con ROS2 tramite webots_ros2_driver.
 
-Il movimento è cinematico: a ogni step la posizione del drone viene avvicinata
-al target di una quantità fissa, senza simulare la fisica del volo. Questa scelta
-permette di concentrarsi sulla logica della missione e sulla cooperazione con il
-rover.
+Il movimento è cinematico: la posizione viene aggiornata direttamente verso
+il target senza modellare la dinamica fisica del volo.
 """
+
 import json
 import time
 from datetime import datetime
@@ -19,9 +17,7 @@ def _iso_ms(epoch):
     return datetime.fromtimestamp(epoch).isoformat(timespec='milliseconds')
 
 
-# DEF del nodo PBRAppearance dell'overlay di allerta di ogni parcella
-# in worlds/agro_field.wbt (usato dal Supervisor per l'evidenziazione
-# rossa dinamica).
+# DEF degli overlay utilizzati dal Supervisor per evidenziare le parcelle.
 ZONE_FILL_APPEARANCE_DEFS = {
     "ZONA_A": "ZONA_A_ALERT_APPEARANCE",
     "ZONA_B": "ZONA_B_ALERT_APPEARANCE",
@@ -32,10 +28,8 @@ ALERT_COLOR = [0.9, 0.1, 0.1]
 ALERT_TRANSPARENCY = 0.5
 NEUTRAL_TRANSPARENCY = 1.0
 
-# DEF del nodo PBRAppearance dell'effetto visivo di trattamento di ogni
-# parcella. Il rover non e' Supervisor e non puo' quindi mostrare o
-# nascondere l'effetto da solo: lo fa il drone, che accede alla scena
-# Webots e possiede gia' il meccanismo di evidenziazione delle parcelle.
+# DEF degli effetti grafici associati al trattamento.
+# La scena viene modificata dal drone, configurato come Supervisor.
 ZONE_SPRAY_APPEARANCE_DEFS = {
     "ZONA_A": "ZONA_A_SPRAY_APPEARANCE",
     "ZONA_B": "ZONA_B_SPRAY_APPEARANCE",
@@ -45,22 +39,17 @@ ZONE_SPRAY_APPEARANCE_DEFS = {
 SPRAY_ACTIVE_TRANSPARENCY = 0.45
 SPRAY_HIDDEN_TRANSPARENCY = 1.0
 
-# Colore verde transitorio "appena trattata": acceso subito alla
-# ricezione di treatment_done, mantenuto per TREATMENT_GREEN_HOLD_S
-# poi spento.
+# Evidenziazione temporanea della parcella al termine del trattamento.
 TREATMENT_DONE_COLOR = [0.15, 0.75, 0.2]
 TREATMENT_GREEN_HOLD_S = 2.5
 
-# Soglia dell'indice di vegetazione simulato per decidere l'esito della
-# verifica. La logica e' analoga all'NDVI: valori piu' bassi indicano
-# una possibile condizione di stress della vegetazione, quindi un
-# valore sotto soglia corrisponde a un rischio confermato.
+# Soglia dell'indice vegetativo simulato: valori inferiori indicano
+# una possibile condizione di stress e confermano operativamente il rischio.
 STRESS_THRESHOLD = 0.5
 
-# Valore vegetativo simulato associato a ogni parcella: e' il dato che
-# il drone "legge" durante la verifica. L'allerta di agro_alert_publisher
-# non lo conosce (segnala solo il sospetto, non ha misurato la
-# vegetazione), per questo vive qui e non nel messaggio di allerta.
+# Valore vegetativo sintetico associato a ciascuna parcella.
+# È separato dall'allerta AgroRisk perché rappresenta l'esito della
+# successiva verifica aerea, non un'informazione già nota al publisher.
 ZONE_STRESS_INDEX = {
     "ZONA_A": 0.70,
     "ZONA_B": 0.72,
@@ -68,32 +57,25 @@ ZONE_STRESS_INDEX = {
     "ZONA_D": 0.68,
 }
 
-# Durata della sosta di verifica sulla zona.
 VERIFICATION_DURATION_S = 8.0
 
-# Posizione della base (vedi DEF DRONE_BASE e translation di partenza
-# di DEF DRONE_1 in worlds/agro_field.wbt).
+
 BASE_X = 0.0
 BASE_Y = -14.0
 BASE_Z = 0.3
 
-# Rete di sicurezza: senza un timeout, un target malformato o un bug
-# futuro lascerebbe la fase "moving"/"returning" a inseguire per sempre
-# un target mai raggiunto. Il timeout fa comunque pubblicare un
-# "return_to_base" finale del drone. Questo garantisce lo sblocco del
-# mission_manager solo nel ramo "rischio non confermato"; nel ramo
-# "rischio confermato" il mission_manager attende il return_to_base del
-# rover, che non ha un timeout di fase, e quel ramo resta scoperto.
-PHASE_TIMEOUT_S = 60.0
+# Timeout difensivo per evitare che una fase di movimento rimanga
+# indefinitamente attiva in caso di target non raggiungibile. E' basato
+# su tempo reale (non simulato): un margine ampio evita falsi allarmi
+# quando Webots esegue più lentamente del tempo reale.
+# Il ramo cooperativo rimane comunque dipendente dal rientro del rover.
+PHASE_TIMEOUT_S = 180.0
 
 
 class DroneControllerWebots:
     def init(self, webots_node, properties):
         self.__robot = webots_node.robot
 
-        # rclpy.init() va chiamato prima di create_node(). La guardia
-        # con rclpy.ok() evita un doppio init nello stesso processo,
-        # possibile con respawn=True nel launch file.
         if not rclpy.ok():
             rclpy.init(args=None)
         self.__node = rclpy.create_node('drone_controller_webots')
@@ -102,37 +84,29 @@ class DroneControllerWebots:
         self.__moving = False
         self.__verifying = False
         self.__returning = False
-        # Esito dell'ultima verifica: nel ramo "rischio confermato" il
-        # rientro del drone NON chiude la missione (la chiude il rover),
-        # quindi cambia solo la nota dell'evento return_to_base.
+        # Memorizza l'esito della verifica per distinguere i due rami della missione.
         self.__risk_confirmed = False
         self.__flight_start_time = None
         self.__verification_start_time = None
         self.__return_start_time = None
         self.__speed = 0.03
-
         self.__node.create_subscription(
             String, '/agro/mission_cmd', self._on_mission_cmd, 10)
         self.__node.create_subscription(
             String, '/agro/treatment_done', self._on_treatment_done, 10)
-        # Serve solo a sapere quando il rover avvia il trattamento, per
-        # accendere il getto. Gli eventi pubblicati da questo stesso nodo
-        # (flight_to_zone, verification_*...) tornano indietro ma vengono
-        # ignorati dal filtro su event_type.
+        # Utilizzato per visualizzare l'avvio del trattamento eseguito dal rover.
         self.__node.create_subscription(
             String, '/agro/events', self._on_agro_event, 10)
         self.__event_pub = self.__node.create_publisher(
             String, '/agro/events', 10)
-        # Il drone pubblica qui l'esito positivo della verifica: il rover
-        # usera' questo topic per avviare la missione di intervento.
+        # Pubblica la conferma utilizzata dal rover e dal mission_manager.
         self.__risk_confirmed_pub = self.__node.create_publisher(
             String, '/agro/risk_confirmed', 10)
 
         self.__translation_field = self.__robot.getSelf().getField(
             'translation')
 
-        # Campi 'baseColor'/'transparency' del fill di ogni parcella,
-        # per l'evidenziazione rossa dinamica via Supervisor.
+        # Campi grafici modificabili dal Supervisor per ciascuna parcella.
         self.__zone_fields = {}
         for zone_id, def_name in ZONE_FILL_APPEARANCE_DEFS.items():
             node = self.__robot.getFromDef(def_name)
@@ -142,17 +116,14 @@ class DroneControllerWebots:
                     "transparency": node.getField("transparency"),
                 }
 
-        # Campo 'transparency' dell'effetto di trattamento di ogni
-        # parcella (il colore resta quello fisso definito nel .wbt).
+        # Trasparenza dell'effetto grafico di trattamento.
         self.__spray_fields = {}
         for zone_id, def_name in ZONE_SPRAY_APPEARANCE_DEFS.items():
             node = self.__robot.getFromDef(def_name)
             if node is not None:
                 self.__spray_fields[zone_id] = node.getField("transparency")
 
-        # Timer one-shot per il mantenimento del verde transitorio: uno
-        # per zona, cosi' una nuova missione su un'altra zona non
-        # interferisce con un hold ancora in corso su quella precedente.
+        # Timer indipendente per l'evidenziazione temporanea di ciascuna zona.
         self.__green_hold_timers = {}
 
     def _on_mission_cmd(self, msg):
@@ -161,8 +132,7 @@ class DroneControllerWebots:
         self.__moving = True
         self.__risk_confirmed = False
         self.__flight_start_time = time.time()
-        # Cancella eventuali timer del verde ancora attivi sulla stessa
-        # zona, evitando che spengano l'evidenziazione rossa appena accesa.
+        # Evita interferenze con una precedente evidenziazione temporanea.
         self._cancel_green_hold_timer(cmd["zone_id"])
         self._highlight_zone(cmd["zone_id"], active=True)
 
@@ -274,9 +244,8 @@ class DroneControllerWebots:
         return False
 
     def _zone_outcome(self, zone_id):
-        """Fallback difensivo (mai atteso: ZONE_STRESS_INDEX copre tutte
-        le zone): se un valore mancasse, tratta la zona come sana, per
-        non confermare un rischio senza una misura."""
+        """Fallback difensivo: se la zona non dispone di un indice configurato,
+        il rischio non viene confermato in assenza di una misura disponibile."""
         indice_stress = ZONE_STRESS_INDEX.get(zone_id, 1.0)
         return indice_stress, indice_stress < STRESS_THRESHOLD
 
@@ -327,10 +296,7 @@ class DroneControllerWebots:
             self.__return_start_time = end_time
 
     def _publish_risk_confirmed(self, cmd, indice_stress):
-        # Il contesto di missione (alert_id, mission_id, action) viene
-        # propagato al rover: senza, gli eventi del rover non sarebbero
-        # associabili alla missione, e il mission_manager non potrebbe
-        # riconoscere per quale missione tenere aperta l'attesa del rover.
+        # Propaga al rover il contesto dell'allerta e della missione corrente.
         payload = {
             "zone_id": cmd["zone_id"],
             "indice_stress": indice_stress,
@@ -364,12 +330,13 @@ class DroneControllerWebots:
         return (time.time() - phase_start_time) > PHASE_TIMEOUT_S
 
     def _abort_mission(self, reason):
-        """Pubblica un mission_error e un return_to_base del drone
-        (source="drone") invece di lasciare la fase appesa. Nel ramo
-        "rischio non confermato" questo chiude comunque la missione lato
-        mission_manager; nel ramo "rischio confermato", se il
-        mission_manager sta gia' attendendo il rover, ignora questo
-        return_to_base e la missione resta aperta (limite noto)."""
+        """
+        Interrompe la fase corrente e pubblica un evento mission_error.
+
+        Nel ramo non confermato il successivo return_to_base consente al
+        mission_manager di chiudere la missione. Se il rover è già atteso,
+        il completamento resta invece dipendente dal suo rientro.
+        """
         x, y, z = self._get_position()
         now = time.time()
         t_start = (self.__return_start_time if self.__returning

@@ -21,7 +21,7 @@ setup(
         'Bringup unificato della demo drone-rover AgroRisk: Webots + '
         'pipeline di missione agro_mission, avviati nell\'ordine corretto.'
     ),
-    license='Apache-2.0',
+    license='Proprietary',
     tests_require=['pytest'],
     entry_points={'console_scripts': []},
 )

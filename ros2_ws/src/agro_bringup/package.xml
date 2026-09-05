@@ -12,7 +12,7 @@
     orchestrarli.
   </description>
   <maintainer email="232223180+nuccelliviola@users.noreply.github.com">Viola Nuccelli</maintainer>
-  <license>Apache-2.0</license>
+  <license>Proprietary</license>
 
   <exec_depend>agro_webots</exec_depend>
   <exec_depend>agro_mission</exec_depend>

@@ -3,9 +3,9 @@
 <package format="3">
   <name>agro_webots</name>
   <version>0.0.1</version>
-  <description>Mondo Webots e bridge ROS2 per la missione drone AgroRisk</description>
+  <description>Mondo Webots e controller ROS2 per la simulazione cooperativa drone-rover AgroRisk</description>
   <maintainer email="232223180+nuccelliviola@users.noreply.github.com">Viola Nuccelli</maintainer>
-  <license>Apache-2.0</license>
+  <license>Proprietary</license>
 
   <depend>webots_ros2_driver</depend>
   <depend>rclpy</depend>

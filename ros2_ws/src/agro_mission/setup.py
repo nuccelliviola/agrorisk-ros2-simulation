@@ -16,7 +16,7 @@ setup(
     maintainer='Viola Nuccelli',
     maintainer_email='232223180+nuccelliviola@users.noreply.github.com',
     description='Nodi ROS2 per la pipeline allerta-missione-log',
-    license='Apache-2.0',
+    license='Proprietary',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

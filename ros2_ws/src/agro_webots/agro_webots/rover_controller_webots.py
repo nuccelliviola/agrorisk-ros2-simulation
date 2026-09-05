@@ -1,14 +1,15 @@
 """
-Dopo l'arrivo sulla zona, il rover sosta per un
-trattamento simulato, pubblica l'esito su /agro/treatment_done (letto
-dal drone per spegnere l'evidenziazione: il rover non e' Supervisor), poi 
-rientra alla base riusando le STESSE funzioni
-di navigazione "orienta poi avanza" usate per l'andata.
+Controller Webots del rover integrato con ROS2.
 
-Le coordinate delle zone sono le STESSE usate da mission_manager per
-instradare il drone (ZONE_POSITIONS): importate direttamente da li',
-non duplicate qui, per evitare che le due tabelle possano divergere.
+Alla ricezione di una conferma del rischio, il rover raggiunge la zona
+indicata mediante una strategia di navigazione "orienta e poi avanza",
+esegue un trattamento localizzato simulato e successivamente rientra
+alla base utilizzando la stessa logica di navigazione.
+
+Le coordinate delle zone sono importate da mission_manager per mantenere
+coerente la rappresentazione spaziale utilizzata dai componenti del sistema.
 """
+
 import json
 import math
 import time
@@ -19,30 +20,31 @@ import rclpy
 
 from agro_mission.mission_manager import ZONE_POSITIONS
 
-#funzione per il timestamp
 def _iso_ms(epoch):
     return datetime.fromtimestamp(epoch).isoformat(timespec='milliseconds')
 
 
 WHEEL_MOTOR_NAMES = [
-    "wheel_fl_motor", #front left
-    "wheel_fr_motor", #front right
-    "wheel_rl_motor", #rear left
-    "wheel_rr_motor", #rear right
+    "wheel_fl_motor",
+    "wheel_fr_motor",
+    "wheel_rl_motor",
+    "wheel_rr_motor",
 ]
-#divisione ruote appartenenti al lato sinistro ed al lato destro. Essenziale per il rover"skid-steer".
-LEFT_WHEELS = (0, 2)   # wheel_fl_motor, wheel_rl_motor
-RIGHT_WHEELS = (1, 3)  # wheel_fr_motor, wheel_rr_motor
 
-FORWARD_VELOCITY = 8.0  # Verificato in un banco di prova rettilineo dedicato: stabile fino a 8.0,
-                        # instabile da 12.0 in su (il rover si impenna/ribalta).
-TURN_VELOCITY = 4.0     # Per tenere il movimento controllato e stabile.
+# Indici delle ruote dei due lati del rover skid-steer.
+LEFT_WHEELS = (0, 2)
+RIGHT_WHEELS = (1, 3)
 
-ANGLE_TOLERANCE_RAD = math.radians(3.0) # Il rover considera di essere "abbastanza orientato"
-                                        # verso il target se l'errore angolare è entro 3 gradi.
+# Velocità delle ruote scelta empiricamente per mantenere stabile
+# il modello durante l'avanzamento.
+FORWARD_VELOCITY = 8.0
+TURN_VELOCITY = 4.0
 
-ARRIVAL_DISTANCE_M = 1.5 # Il rover considera raggiunto il target quando si trova entro
-                         # 1.5 metri dalla zona. 
+# Tolleranza angolare utilizzata nella fase di orientamento.
+ANGLE_TOLERANCE_RAD = math.radians(3.0)
+
+# Distanza entro la quale il target viene considerato raggiunto.
+ARRIVAL_DISTANCE_M = 1.5
 
 # Durata della sosta di trattamento sulla zona.
 TREATMENT_DURATION_S = 8.0
@@ -54,31 +56,28 @@ ROVER_BASE_Y = -14.0
 
 class RoverControllerWebots:
     def init(self, webots_node, properties):
-        self.__robot = webots_node.robot # Salva il riferimento al robot Webots.
+        self.__robot = webots_node.robot
 
-        if not rclpy.ok(): # Controllo che ROS2 non sia già stato inizializzato.
-            rclpy.init(args=None) 
-        self.__node = rclpy.create_node('rover_controller_webots')  # Creo il nodo ROS2 interno al controller Webots.
-                                                                    # Quindi il controller è dentro Webots, ma comunica 
-                                                                    # con il resto del sistema come nodo ROS2.
+        if not rclpy.ok():
+            rclpy.init(args=None)
+        self.__node = rclpy.create_node('rover_controller_webots')
         self.__motors = [
-            self.__robot.getDevice(name) for name in WHEEL_MOTOR_NAMES] # recupero dei motori
+            self.__robot.getDevice(name) for name in WHEEL_MOTOR_NAMES]
         for motor in self.__motors:
             motor.setPosition(float('inf'))
-            motor.setVelocity(0.0) 
+            motor.setVelocity(0.0)
 
-        timestep = int(self.__robot.getBasicTimeStep()) # prendo il timestamp della simulazione Webots
-        self.__gps = self.__robot.getDevice('gps') # recupero il gps del rover. Mi serve per conoscerne la posizione nel mondo.
+        timestep = int(self.__robot.getBasicTimeStep())
+        self.__gps = self.__robot.getDevice('gps')
         self.__gps.enable(timestep)
-        self.__imu = self.__robot.getDevice('inertial_unit') # recupero l'unità inerziale. Mi serve per conoscere l'orientamento
-                                                             # del rover, in particolare lo yaw (l'angolo di rotazione sul piano).
+        self.__imu = self.__robot.getDevice('inertial_unit')
         self.__imu.enable(timestep)
 
-        self.__target = None      # (tx, ty) della zona o della base
+        self.__target = None
         self.__rotating = False
         self.__advancing = False
         self.__treating = False
-        self.__return_trip = False  # False = verso la zona, True = verso la base
+        self.__return_trip = False
         self.__treatment_start_time = None
         self.__zone_id = None
         self.__indice_stress = None
@@ -95,12 +94,12 @@ class RoverControllerWebots:
         # mission_manager.py.
         self.__request_queue = []
 
-        self.__node.create_subscription(    # il rover si sottoscrive a /agro/risk_confirmed
-            String, '/agro/risk_confirmed', self._on_risk_confirmed, 10) 
+        self.__node.create_subscription(
+            String, '/agro/risk_confirmed', self._on_risk_confirmed, 10)
         self.__event_pub = self.__node.create_publisher(
-            String, '/agro/events', 10)     # il rover pubblica eventi generali sul topic /agro/events, salvati poi dal mission_logger
+            String, '/agro/events', 10)
         self.__treatment_done_pub = self.__node.create_publisher(
-            String, '/agro/treatment_done', 10) # pubblica su /agro/treatment_done quando il trattamento è completato.
+            String, '/agro/treatment_done', 10)
 
     def _on_risk_confirmed(self, msg):
         payload = json.loads(msg.data)
@@ -110,7 +109,7 @@ class RoverControllerWebots:
                 f"Zona sconosciuta in risk_confirmed: {zone_id}, ignorato.")
             return
 
-        if self.__target is not None: # rover occupato (zona/trattamento/rientro in corso)
+        if self.__target is not None:
             if self._is_duplicate_zone(zone_id):
                 self.__node.get_logger().info(
                     f"Zona {zone_id} gia' in trattamento o in coda, "
@@ -166,20 +165,20 @@ class RoverControllerWebots:
         self.__mission_id = payload.get("mission_id")
         self.__target = target
         self.__return_trip = False
-        self.__rotating = True # avvia la prima fase : orientarsi verso il target.
+        self.__rotating = True
         self.__node.get_logger().info(
             f"Rover: navigazione avviata verso {zone_id} {target}")
 
     def _get_pose(self):
-        x, y, _ = self.__gps.getValues() # prende la posizione dal GPS. Mi servono solo x e y, quindi la z la metto in _.
-        yaw = self.__imu.getRollPitchYaw()[2] # L'unità inerziale restituisce : roll, pitch, yaw. Io prendo solo yaw. ([2])
+        x, y, _ = self.__gps.getValues()
+        yaw = self.__imu.getRollPitchYaw()[2]
         return x, y, yaw
 
     def step(self):
-        rclpy.spin_once(self.__node, timeout_sec=0) # permette al nodo ROS2 interno di ricevere messaggi.
+        rclpy.spin_once(self.__node, timeout_sec=0)
 
-        if self.__target is None: 
-            return                  # se non ha un target non deve fare nulla.
+        if self.__target is None:
+            return
 
         if self.__rotating:
             self._rotate_towards_target()
@@ -188,22 +187,19 @@ class RoverControllerWebots:
         elif self.__treating:
             self._check_treatment_done()
 
-    # Metodo per impostare la velocità delle ruote sinistre e destre.
-    def _set_wheel_velocities(self, left, right): 
+    def _set_wheel_velocities(self, left, right):
         for i in LEFT_WHEELS:
-            self.__motors[i].setVelocity(left) # per ogni ruota sinistra, imposta velocità left.
+            self.__motors[i].setVelocity(left)
         for i in RIGHT_WHEELS:
-            self.__motors[i].setVelocity(right) # per ogni ruota destra, imposta velocità right.
+            self.__motors[i].setVelocity(right)
 
-    # Metodo per far orientare il rover verso il target prima di farlo avanzare.
     def _rotate_towards_target(self):
-        x, y, yaw = self._get_pose() # posizione e orientamento attuale del rover
-        tx, ty = self.__target      # coordinate del target.
-        desired_yaw = math.atan2(ty - y, tx - x) # calcola l'angolo verso il target.
-        diff = math.atan2(math.sin(desired_yaw - yaw), math.cos(desired_yaw - yaw)) # calcola la differenza tra direzione desiderata 
-                                                                                    # e orientamento attuale.
+        x, y, yaw = self._get_pose()
+        tx, ty = self.__target
+        desired_yaw = math.atan2(ty - y, tx - x)
+        diff = math.atan2(math.sin(desired_yaw - yaw), math.cos(desired_yaw - yaw))
 
-        if abs(diff) <= ANGLE_TOLERANCE_RAD: # il rover è orientato
+        if abs(diff) <= ANGLE_TOLERANCE_RAD:
             self.__rotating = False
             self.__advancing = True
             self._set_wheel_velocities(FORWARD_VELOCITY, FORWARD_VELOCITY)
@@ -212,17 +208,17 @@ class RoverControllerWebots:
         # Se il rover non è ancora orientato sceglie da che lato girare.
         # diff > 0: bersaglio a sinistra (yaw deve crescere) -> ruote
         # destre avanti, sinistre indietro (rotazione antioraria sul
-        # posto). 
+        # posto).
         turn = TURN_VELOCITY if diff > 0 else -TURN_VELOCITY
         self._set_wheel_velocities(-turn, turn)
 
     def _advance_towards_target(self):
         x, y, _ = self._get_pose()
         tx, ty = self.__target
-        dist = math.hypot(tx - x, ty - y) # calcola la distanza tra rover e target (distanza euclidea)
+        dist = math.hypot(tx - x, ty - y)
 
         if dist <= ARRIVAL_DISTANCE_M:
-            self.__advancing = False # target raggiunto, il rover smette di avanzare.
+            self.__advancing = False
             self._set_wheel_velocities(0.0, 0.0)
 
             if self.__return_trip:
