@@ -264,3 +264,13 @@ I nodi comunicano tramite topic:
 - `drone_controller_webots` — controlla il drone nella simulazione Webots (volo,
   verifica, effetti visivi);
 - `rover_controller_webots` — controlla il rover per l'intervento localizzato.
+
+## Video dimostrativo
+
+
+È disponibile un video dell'esecuzione completa dello scenario simulato nella
+sezione [Releases](https://github.com/nuccelliviola/agrorisk-ros2-simulation/releases).
+
+Il video mostra l'esecuzione della simulazione cooperativa drone-rover, dalla
+generazione delle allerte alla verifica aerea e, in caso di conferma del rischio,
+all'intervento localizzato del rover.
