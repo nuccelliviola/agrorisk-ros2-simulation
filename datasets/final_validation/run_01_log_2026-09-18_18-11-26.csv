@@ -1,0 +1,19 @@
+timestamp_start,timestamp_end,duration_seconds,event_type,alert_id,mission_id,zone_id,drone_id,source,risk_level,pest,indice_stress,action,x,y,z,note
+2026-09-18T18:11:52.689,2026-09-18T18:11:52.689,0.0,alert_received,A001,,ZONA_B,drone_1,manager,high,tuta_absoluta,,localized_treatment,0.0,0.0,0.0,Allerta ricevuta
+2026-09-18T18:12:07.754,2026-09-18T18:12:07.754,0.0,alert_queued,A002,,ZONA_C,drone_1,manager,high,tuta_absoluta,,localized_treatment,0.0,0.0,0.0,"Allerta accodata (posizione 1 in coda), drone occupato su ZONA_B"
+2026-09-18T18:12:22.749,2026-09-18T18:12:22.749,0.0,alert_received,A003,,ZONA_A,drone_1,manager,low,tuta_absoluta,,,0.0,0.0,0.0,"Allerta ricevuta, sotto soglia (risk_level=low)"
+2026-09-18T18:11:52.736,2026-09-18T18:12:36.668,43.932,flight_to_zone,A001,M001,ZONA_B,drone_1,drone,,,,localized_treatment,4.75,4.75,2.0,Drone arrivato sulla zona
+2026-09-18T18:12:36.668,2026-09-18T18:12:36.668,0.0,verification_started,A001,M001,ZONA_B,drone_1,drone,,,,localized_treatment,4.75,4.75,2.0,Verifica avviata: lettura indice di stress vegetativo
+2026-09-18T18:12:37.757,2026-09-18T18:12:37.757,0.0,alert_received,A004,,ZONA_D,drone_1,manager,medium,tuta_absoluta,,,0.0,0.0,0.0,"Allerta ricevuta, sotto soglia (risk_level=medium)"
+2026-09-18T18:12:36.668,2026-09-18T18:12:44.836,8.168,verification_result,A001,M001,ZONA_B,drone_1,drone,,,0.72,localized_treatment,4.740979392632813,4.714392339340048,1.9967715721001644,Rischio non confermato (indice_stress=0.72)
+2026-09-18T18:12:44.836,2026-09-18T18:13:27.065,42.229,return_to_base,A001,M001,ZONA_B,drone_1,drone,,,,localized_treatment,0.007338977387977315,-13.971030352415882,0.30262658138096027,"Drone tornato alla base, missione conclusa"
+2026-09-18T18:11:52.689,2026-09-18T18:13:27.065,94.375,mission,A001,M001,ZONA_B,drone_1,manager,high,tuta_absoluta,,localized_treatment,0.007338977387977315,-13.971030352415882,0.30262658138096027,Missione conclusa
+2026-09-18T18:12:07.752,2026-09-18T18:13:27.069,79.317,queue_wait,A002,,ZONA_C,drone_1,manager,high,tuta_absoluta,,localized_treatment,0.0,0.0,0.0,"Uscita dalla coda dopo 79.317s di attesa, missione avviata"
+2026-09-18T18:13:27.357,2026-09-18T18:13:51.400,24.043,flight_to_zone,A002,M002,ZONA_C,drone_1,drone,,,,localized_treatment,-4.75,-4.75,2.0,Drone arrivato sulla zona
+2026-09-18T18:13:51.400,2026-09-18T18:13:51.400,0.0,verification_started,A002,M002,ZONA_C,drone_1,drone,,,,localized_treatment,-4.75,-4.75,2.0,Verifica avviata: lettura indice di stress vegetativo
+2026-09-18T18:13:51.400,2026-09-18T18:13:59.641,8.241,verification_result,A002,M002,ZONA_C,drone_1,drone,,,0.34,localized_treatment,-4.730164840777979,-4.788445989680492,1.9929230033475518,Rischio confermato (indice_stress=0.34)
+2026-09-18T18:13:59.641,2026-09-18T18:14:24.323,24.682,return_to_base,A002,M002,ZONA_C,drone_1,drone,,,,localized_treatment,-0.0101565766097703,-13.980221016148466,0.30363503234173,"Drone tornato alla base, in attesa del completamento del rover"
+2026-09-18T18:14:38.309,2026-09-18T18:14:38.309,0.0,treatment_started,A002,M002,ZONA_C,,rover,,,,localized_treatment,-4.292467896097948,-6.149568770053455,0.0,Trattamento avviato su ZONA_C
+2026-09-18T18:14:38.309,2026-09-18T18:14:46.435,8.126,treatment_result,A002,M002,ZONA_C,,rover,,,0.34,localized_treatment,-4.391207204053432,-6.0347075299952575,0.0,Trattamento completato su ZONA_C
+2026-09-18T18:14:46.439,2026-09-18T18:15:28.247,41.808,return_to_base,A002,M002,ZONA_C,,rover,,,,localized_treatment,1.1507949189963829,-13.377953311874313,0.0,Rover rientrato alla base dopo il trattamento
+2026-09-18T18:13:27.073,2026-09-18T18:15:28.247,121.174,mission,A002,M002,ZONA_C,drone_1,manager,high,tuta_absoluta,,localized_treatment,1.1507949189963829,-13.377953311874313,0.0,Missione conclusa
