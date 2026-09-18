@@ -78,6 +78,7 @@ class RoverControllerWebots:
         self.__advancing = False
         self.__treating = False
         self.__return_trip = False
+        self.__return_start_time = None
         self.__treatment_start_time = None
         self.__zone_id = None
         self.__indice_stress = None
@@ -86,6 +87,7 @@ class RoverControllerWebots:
         # generati (il rover non riceve /agro/mission_cmd).
         self.__alert_id = None
         self.__mission_id = None
+        self.__action = None
 
         # Coda FIFO delle richieste (risk_confirmed) arrivate a rover
         # occupato: [payload, payload, ...]. Si svuota di un elemento
@@ -163,6 +165,7 @@ class RoverControllerWebots:
         self.__indice_stress = payload.get("indice_stress")
         self.__alert_id = payload.get("alert_id")
         self.__mission_id = payload.get("mission_id")
+        self.__action = payload.get("action")
         self.__target = target
         self.__return_trip = False
         self.__rotating = True
@@ -222,10 +225,11 @@ class RoverControllerWebots:
             self._set_wheel_velocities(0.0, 0.0)
 
             if self.__return_trip:
-                now = time.time()
+                end_time = time.time()
                 self._publish_event("return_to_base", x, y, 0.0,
                                      "Rover rientrato alla base dopo il trattamento",
-                                     now, now)
+                                     self.__return_start_time, end_time)
+                self.__return_start_time = None
                 self.__node.get_logger().info("Rover: rientrato alla base, fermo.")
                 self.__target = None
                 self._dequeue_next_request()
@@ -261,6 +265,7 @@ class RoverControllerWebots:
             f"Trattamento completato pubblicato: {msg.data}")
 
     def _start_return_to_base(self):
+        self.__return_start_time = time.time()
         self.__target = (ROVER_BASE_X, ROVER_BASE_Y)
         self.__return_trip = True
         self.__rotating = True
@@ -280,6 +285,7 @@ class RoverControllerWebots:
             "zone_id": zone_id if zone_id is not None else self.__zone_id,
             # drone_id resta vuoto: questi eventi non li produce il drone.
             "source": "rover",
+            "action": self.__action,
             "x": x, "y": y, "z": z,
             "note": note,
         }

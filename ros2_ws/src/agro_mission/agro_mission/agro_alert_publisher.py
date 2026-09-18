@@ -67,7 +67,9 @@ class AgroAlertPublisher(Node):
             "zone_id": zone_id,
             "risk_level": risk_level,
             "pest": PEST,
-            "recommended_action": "localized_treatment",
+            "recommended_action": (
+                "localized_treatment" if risk_level == "high" else ""
+            ),
         }
         msg = String()
         msg.data = json.dumps(alert)
